@@ -1,0 +1,223 @@
+diff -ruN a/src/org/jetbrains/kotlin/scripting/definitions/AutoloadedScriptDefinitions.kt b/src/org/jetbrains/kotlin/scripting/definitions/AutoloadedScriptDefinitions.kt
+--- a/src/org/jetbrains/kotlin/scripting/definitions/AutoloadedScriptDefinitions.kt	2026-11-12 12:06:01.305984700 +0100
++++ b/src/org/jetbrains/kotlin/scripting/definitions/AutoloadedScriptDefinitions.kt	2026-11-12 19:02:07.232916532 +0100
+@@ -44,4 +44,4 @@
+     companion object {
+         private val MAIN_KTS_JARS = listOf("kotlin-main-kts", "kotlin-stdlib", "kotlin-script-runtime", "kotlin-reflect")
+     }
+-}
+\ No newline at end of file
++}
+diff -ruN a/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromDefinition.kt b/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromDefinition.kt
+--- a/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromDefinition.kt	2026-11-12 12:06:01.306161191 +0100
++++ b/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromDefinition.kt	2026-11-12 19:02:07.238210831 +0100
+@@ -18,4 +18,4 @@
+ 
+ val ScriptCompilationConfigurationKeys.asyncDependenciesResolver by PropertiesCollection.key<Boolean>()
+ 
+-val ScriptingHostConfigurationKeys.getEnvironment by PropertiesCollection.key<() -> Environment?>()
+\ No newline at end of file
++val ScriptingHostConfigurationKeys.getEnvironment by PropertiesCollection.key<() -> Environment?>()
+diff -ruN a/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromLegacyTemplate.kt b/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromLegacyTemplate.kt
+--- a/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromLegacyTemplate.kt	2026-11-12 12:06:01.306161191 +0100
++++ b/src/org/jetbrains/kotlin/scripting/definitions/ScriptCompilationConfigurationFromLegacyTemplate.kt	2026-11-12 19:02:07.240428057 +0100
+@@ -150,7 +150,7 @@
+         it[ScriptingHostConfiguration.getEnvironment]?.invoke()
+     }.orEmpty()
+ 
+-    val [resolvedDeps, diagnostics] = runCatching {
++    val (resolvedDeps, diagnostics) = runCatching {
+         val result = dependencyResolver.resolve(ScriptContentsFromRefinementContext(context), environment)
+         result.dependencies to result.reports.map { report ->
+             ScriptDiagnostic(
+diff -ruN a/src/org/jetbrains/kotlin/scripting/definitions/ScriptDefinitionsSource.kt b/src/org/jetbrains/kotlin/scripting/definitions/ScriptDefinitionsSource.kt
+--- a/src/org/jetbrains/kotlin/scripting/definitions/ScriptDefinitionsSource.kt	2026-11-12 12:06:01.306161191 +0100
++++ b/src/org/jetbrains/kotlin/scripting/definitions/ScriptDefinitionsSource.kt	2026-11-12 19:02:07.245180511 +0100
+@@ -12,4 +12,4 @@
+ )
+ interface ScriptDefinitionsSource {
+     val definitions: Sequence<ScriptDefinition>
+-}
+\ No newline at end of file
++}
+diff -ruN a/src/org/jetbrains/kotlin/scripting/definitions/ScriptiDefinitionsFromClasspathDiscoverySource.kt b/src/org/jetbrains/kotlin/scripting/definitions/ScriptiDefinitionsFromClasspathDiscoverySource.kt
+--- a/src/org/jetbrains/kotlin/scripting/definitions/ScriptiDefinitionsFromClasspathDiscoverySource.kt	2026-11-12 12:06:01.306161191 +0100
++++ b/src/org/jetbrains/kotlin/scripting/definitions/ScriptiDefinitionsFromClasspathDiscoverySource.kt	2026-11-12 19:08:15.051753629 +0100
+@@ -71,9 +71,7 @@
+                                         SCRIPT_DEFINITION_MARKERS_EXTENSION_WITH_DOT
+                                     )
+                                 }.toList()
+-                                (
+-                                    val loadedDefinitions = loaded, val notFoundClasses = notFound
+-                                ) =
++                                val (loadedDefinitions, notFoundClasses) =
+                                     definitionNames.partitionLoadJarDefinitions(
+                                         jar,
+                                         classpathWithLoader,
+@@ -96,9 +94,7 @@
+                         defferedDirDependencies.add(dep) // there is no way to know that the dependency is fully "used" so we add it to the list anyway
+                         val discoveryMarkers = File(dep, SCRIPT_DEFINITION_MARKERS_PATH).listFiles()
+                         if (discoveryMarkers?.isEmpty() == false) {
+-                            (
+-                                val foundDefinitionClasses = loaded, val notFoundDefinitions = notFound
+-                            ) =
++                            val (foundDefinitionClasses, notFoundDefinitions) =
+                                 discoveryMarkers.map {
+                                     it.name.removeSuffix(
+                                         SCRIPT_DEFINITION_MARKERS_EXTENSION_WITH_DOT
+@@ -125,7 +121,7 @@
+         for (dep in defferedDirDependencies) {
+             if (remainingDefinitionCandidates.isEmpty()) break
+             try {
+-                (val foundDefinitionClasses = loaded, val notFoundDefinitions = notFound) = remainingDefinitionCandidates.partitionLoadDirDefinitions(
++                val (foundDefinitionClasses, notFoundDefinitions) = remainingDefinitionCandidates.partitionLoadDirDefinitions(
+                     dep,
+                     classpathWithLoader,
+                     hostConfiguration,
+@@ -161,7 +157,7 @@
+     if (scriptTemplates.isEmpty()) emptySequence()
+     else sequence {
+         // trying the direct classloading from baseClassloader first, since this is the most performant variant
+-        val [initialLoadedDefinitions, initialNotFoundTemplates] = scriptTemplates.partitionMapNotNull {
++        val (initialLoadedDefinitions, initialNotFoundTemplates) = scriptTemplates.partitionMapNotNull {
+             loadScriptDefinition(
+                 baseClassLoader,
+                 it,
+@@ -181,9 +177,7 @@
+             if (remainingTemplates.isEmpty()) break
+ 
+             try {
+-                (
+-                    val loadedDefinitions = loaded, val notFoundTemplates = notFound
+-                ) =
++                val (loadedDefinitions, notFoundTemplates) =
+                     when {
+                         dep.isFile && dep.extension == "jar" -> { // checking for extension is the compiler current behaviour, so the same logic is implemented here
+                             JarFile(dep).use { jar ->
+diff -ruN a/src/org/jetbrains/kotlin/scripting/definitions/definitions.kt b/src/org/jetbrains/kotlin/scripting/definitions/definitions.kt
+--- a/src/org/jetbrains/kotlin/scripting/definitions/definitions.kt	2026-11-12 12:06:01.306161191 +0100
++++ b/src/org/jetbrains/kotlin/scripting/definitions/definitions.kt	2026-11-12 19:02:08.841394523 +0100
+@@ -5,7 +5,6 @@
+ 
+ package org.jetbrains.kotlin.scripting.definitions
+ 
+-import com.intellij.ide.highlighter.JavaFileType
+ import com.intellij.injected.editor.VirtualFileWindow
+ import com.intellij.openapi.application.ApplicationManager
+ import com.intellij.openapi.diagnostic.Logger
+@@ -85,7 +84,7 @@
+         } else {
+             val nameSeq = nameSequence
+             nameSeq.endsWith(KotlinFileType.DOT_DEFAULT_EXTENSION) ||
+-                    nameSeq.endsWith(JavaFileType.DOT_DEFAULT_EXTENSION) ||
++                    nameSeq.endsWith(".java") ||
+                     nameSeq.endsWith(JAVA_CLASS_FILE_TYPE_DOT_DEFAULT_EXTENSION) ||
+                     !this.isKotlinFileType()
+         }
+diff -ruN a/src/org/jetbrains/kotlin/scripting/resolve/FirReplHistoryScope.kt b/src/org/jetbrains/kotlin/scripting/resolve/FirReplHistoryScope.kt
+--- a/src/org/jetbrains/kotlin/scripting/resolve/FirReplHistoryScope.kt	2026-11-12 12:06:01.306836879 +0100
++++ b/src/org/jetbrains/kotlin/scripting/resolve/FirReplHistoryScope.kt	2026-11-12 19:02:07.250348441 +0100
+@@ -57,4 +57,4 @@
+     override fun withReplacedSessionOrNull(newSession: FirSession, newScopeSession: ScopeSession): FirLocalScope? {
+         return null
+     }
+-}
+\ No newline at end of file
++}
+diff -ruN a/src/org/jetbrains/kotlin/scripting/resolve/LazyScriptDescriptor.kt b/src/org/jetbrains/kotlin/scripting/resolve/LazyScriptDescriptor.kt
+--- a/src/org/jetbrains/kotlin/scripting/resolve/LazyScriptDescriptor.kt	2026-11-12 12:06:01.306967130 +0100
++++ b/src/org/jetbrains/kotlin/scripting/resolve/LazyScriptDescriptor.kt	2026-11-12 19:08:15.053170086 +0100
+@@ -116,7 +116,7 @@
+     override fun getSource() = sourceElement
+ 
+     private val priority: Int = ScriptPriorities.getScriptPriority(scriptInfo.script)
+-    private val isReplScript: Boolean = ScriptPriorities.isReplScript(scriptInfo.script)
++    override fun isReplScript(): Boolean = ScriptPriorities.isReplScript(scriptInfo.script)
+ 
+     override fun getPriority() = priority
+ 
+@@ -272,7 +272,7 @@
+ 
+     private val scriptProvidedProperties: () -> List<ScriptProvidedPropertyDescriptor> = resolveSession.storageManager.createLazyValue {
+         scriptCompilationConfiguration()[ScriptCompilationConfiguration.providedProperties].orEmpty()
+-            .mapNotNull { [name, type] ->
++            .mapNotNull { (name, type) ->
+                 val propertyClass = try {
+                     getScriptingClass(type)
+                 } catch (e: IllegalArgumentException) {
+@@ -288,7 +288,7 @@
+                     name.toValidJvmIdentifier() to
+                             it.defaultType.makeNullableAsSpecified(type.isNullable).replaceArgumentsWithStarProjections()
+                 }
+-            }.map { [name, type] ->
++            }.map { (name, type) ->
+                 ScriptProvidedPropertyDescriptor(
+                     Name.identifier(name),
+                     type,
+@@ -305,6 +305,7 @@
+         val constructor: ClassConstructorDescriptorImpl,
+         val earlierScriptsParameter: ValueParameterDescriptor?,
+         val baseClassConstructorParameters: List<ValueParameterDescriptor>,
++        val implicitReceiversParameters: List<ValueParameterDescriptor>,
+         val scriptProvidedPropertiesParameters: List<ValueParameterDescriptor>
+     )
+ 
+@@ -341,7 +342,7 @@
+                 source = SourceElement.NO_SOURCE
+             )
+ 
+-        val earlierScriptsParameter = if (isReplScript) {
++        val earlierScriptsParameter = if (isReplScript()) {
+             createValueParameter(Name.special("<earlierScripts>") to builtIns.getArrayType(Variance.INVARIANT, builtIns.anyType))
+         } else null
+ 
+@@ -364,6 +365,7 @@
+             constructorDescriptor,
+             earlierScriptsParameter = earlierScriptsParameter,
+             baseClassConstructorParameters = explicitParameters,
++            implicitReceiversParameters = implicitReceiversParameters,
+             scriptProvidedPropertiesParameters = providedPropertiesParameters
+         )
+     }
+@@ -374,6 +376,9 @@
+     override fun getExplicitConstructorParameters(): List<ValueParameterDescriptor> =
+         scriptPrimaryConstructorWithParams().baseClassConstructorParameters
+ 
++    override fun getImplicitReceiversParameters(): List<ValueParameterDescriptor> =
++        scriptPrimaryConstructorWithParams().implicitReceiversParameters
++
+     override fun getScriptProvidedPropertiesParameters(): List<ValueParameterDescriptor> =
+         scriptPrimaryConstructorWithParams().scriptProvidedPropertiesParameters
+ 
+diff -ruN a/src/org/jetbrains/kotlin/scripting/resolve/ScriptReportSink.kt b/src/org/jetbrains/kotlin/scripting/resolve/ScriptReportSink.kt
+--- a/src/org/jetbrains/kotlin/scripting/resolve/ScriptReportSink.kt	2026-11-12 12:06:01.306967130 +0100
++++ b/src/org/jetbrains/kotlin/scripting/resolve/ScriptReportSink.kt	2026-11-12 19:02:07.253716519 +0100
+@@ -21,4 +21,4 @@
+ 
+ interface ScriptReportSink {
+     fun attachReports(scriptFile: VirtualFile, reports: List<ScriptDiagnostic>)
+-}
+\ No newline at end of file
++}
+diff -ruN a/src/org/jetbrains/kotlin/scripting/resolve/legacyWrappers.kt b/src/org/jetbrains/kotlin/scripting/resolve/legacyWrappers.kt
+--- a/src/org/jetbrains/kotlin/scripting/resolve/legacyWrappers.kt	2026-11-12 12:06:01.306967130 +0100
++++ b/src/org/jetbrains/kotlin/scripting/resolve/legacyWrappers.kt	2026-11-12 19:02:07.254143494 +0100
+@@ -57,4 +57,4 @@
+ 
+     private fun kotlin.script.dependencies.ScriptContents.Position.convertPosition(): ScriptReport.Position =
+         ScriptReport.Position(line, col)
+-}
+\ No newline at end of file
++}
+diff -ruN a/src/org/jetbrains/kotlin/scripting/resolve/refineCompilationConfiguration.kt b/src/org/jetbrains/kotlin/scripting/resolve/refineCompilationConfiguration.kt
+--- a/src/org/jetbrains/kotlin/scripting/resolve/refineCompilationConfiguration.kt	2026-11-12 12:06:01.306967130 +0100
++++ b/src/org/jetbrains/kotlin/scripting/resolve/refineCompilationConfiguration.kt	2026-11-12 19:02:07.255618590 +0100
+@@ -324,7 +324,7 @@
+ 
+ private fun Iterable<KtAnnotationEntry>.construct(
+     classLoader: ClassLoader?, acceptedAnnotations: List<KClass<out Annotation>>, project: Project, document: Document?, filePath: String,
+-): List<ScriptSourceAnnotation<*>> = construct(classLoader, acceptedAnnotations, project).map { [annotation, psiAnn] ->
++): List<ScriptSourceAnnotation<*>> = construct(classLoader, acceptedAnnotations, project).map { (annotation, psiAnn) ->
+     ScriptSourceAnnotation(
+         annotation = annotation,
+         location = document?.let { document ->
